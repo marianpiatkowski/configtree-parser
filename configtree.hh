@@ -130,7 +130,7 @@ public:
 
     if (dot not_eq std::string::npos)
     {
-      ParameterTree& s = sub(key.substr(0,dot));
+      ConfigTree& s = sub(key.substr(0,dot));
       return s[key.substr(dot+1)];
     }
     else
@@ -157,14 +157,17 @@ public:
 
     if (dot not_eq std::string::npos)
     {
-      const ParameterTree& s = sub(key.substr(0,dot));
+      const ConfigTree& s = sub(key.substr(0,dot));
       return s[key.substr(dot+1)];
     }
     else
     {
       if (not hasKey(key))
-        DUNE_THROW(Dune::RangeError, "Key '" << key
-                   << "' not found in ParameterTree (prefix " + prefix_ + ")");
+      {
+        std::ostringstream message;
+        message << "Key '" << key << "' not found in ParameterTree (prefix " + prefix_ + ")";
+        throw std::range_error(message.str());
+      }
       return values_.find(key)->second;
     }
   }
@@ -187,7 +190,7 @@ public:
     for(; vit not_eq vend; ++vit)
       stream << vit->first << " = \"" << vit->second << "\"" << std::endl;
 
-    typedef std::map<std::string, ParameterTree>::const_iterator SubIt;
+    typedef std::map<std::string, ConfigTree>::const_iterator SubIt;
     SubIt sit = subs_.begin();
     SubIt send = subs_.end();
     for(; sit not_eq send; ++sit)
@@ -209,13 +212,17 @@ public:
 
     if (dot not_eq std::string::npos)
     {
-      ParameterTree& s = sub(key.substr(0,dot));
+      ConfigTree& s = sub(key.substr(0,dot));
       return s.sub(key.substr(dot+1));
     }
     else
     {
       if (values_.count(key) > 0)
-        DUNE_THROW(RangeError,"key " << key << " occurs as value and as subtree");
+      {
+        std::ostringstream message;
+        message << "key " << key << " occurs as value and as subtree";
+        throw std::range_error(message.str());
+      }
       if (subs_.count(key) == 0)
         subKeys_.push_back(key.substr(0,dot));
       subs_[key].prefix_ = prefix_ + key + ".";
@@ -236,19 +243,24 @@ public:
 
     if (dot not_eq std::string::npos)
     {
-      const ParameterTree& s = sub(key.substr(0,dot));
+      const ConfigTree& s = sub(key.substr(0,dot));
       return s.sub(key.substr(dot+1));
     }
     else
     {
       if (values_.count(key) > 0)
-        DUNE_THROW(RangeError,"key " << key << " occurs as value and as subtree");
+      {
+        std::ostringstream message;
+        message << "key " << key << " occurs as value and as subtree";
+        throw std::range_error(message.str());
+      }
       if (subs_.count(key) == 0)
       {
         if (fail_if_missing)
         {
-          DUNE_THROW(Dune::RangeError, "SubTree '" << key
-                     << "' not found in ParameterTree (prefix " + prefix_ + ")");
+          std::ostringstream message;
+          message << "SubTree '" << key << "' not found in ParameterTree (prefix " + prefix_ + ")";
+          throw std::range_error(message.str());
         }
         else
           return empty_;
@@ -323,18 +335,23 @@ public:
   T get(const std::string& key) const
   {
     if(not hasKey(key))
-      DUNE_THROW(Dune::RangeError, "Key '" << key
-        << "' not found in ParameterTree (prefix " + prefix_ + ")");
+    {
+      std::ostringstream message;
+      message << "Key '" << key << "' not found in ParameterTree (prefix " + prefix_ + ")";
+      throw std::range_error(message.str());
+    }
     try
     {
       return Parser<T>::parse((*this)[key]);
     }
-    catch(const RangeError& e)
+    catch(const std::range_error& e)
     {
       // rethrow the error and add more information
-      DUNE_THROW(RangeError, "Cannot parse value \"" << (*this)[key]
-        << "\" for key \"" << prefix_ << "." << key << "\""
-        << e.what());
+      std::ostringstream message;
+      message << "Cannot parse value \"" << (*this)[key]
+              << "\" for key \"" << prefix_ << "." << key << "\""
+              << e.what();
+      throw std::range_error(message.str());
     }
   }
 
@@ -420,9 +437,13 @@ protected:
     {
       s >> *it;
       if(not s)
-        DUNE_THROW(RangeError, "as a range of items of type "
-          << className<Value>()
-          << " (" << n << " items were extracted successfully)");
+      {
+        std::ostringstream message;
+        message << "as a range of items of type "
+                << className<Value>()
+                << " (" << n << " items were extracted successfully)";
+        throw std::range_error(message.str());
+      }
     }
     Value dummy;
     s >> dummy;
