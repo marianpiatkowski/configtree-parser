@@ -4,12 +4,13 @@
 #define CONFIGTREE_PARSER_HH
 
 /** \file
- * \brief Various parser methods to get data into a ParameterTree object
+ * \brief Various parser methods to get data into a ConfigTree object
  */
 
 #include <istream>
 #include <string>
 #include <vector>
+#include <set>
 
 #include "configtree.hh"
 
@@ -93,7 +94,7 @@ public :
    *       const std::string&, bool) with the exception that that
    *       method allows one to give a custom name for the stream.
    */
-  static void readINITree(std::istream& in, ParameterTree& pt,
+  static void readINITree(std::istream& in, ConfigTree& pt,
                           bool overwrite)
   {
     readINITree(in, pt, "stream", overwrite);
@@ -112,7 +113,7 @@ public :
    *                  If false, values in the stream will be ignored
    *                  if the key is already present.
    */
-  static void readINITree(std::istream& in, ParameterTree& pt,
+  static void readINITree(std::istream& in, ConfigTree& pt,
                           const std::string srcname = "stream",
                           bool overwrite = true)
   {
@@ -172,7 +173,11 @@ public :
           }
 
           if (keysInFile.count(key) not_eq 0)
-            throw std::range_error("Key '" << key << "' appears twice in " << srcname << " !");
+          {
+            std::ostringstream message;
+            message << "Key '" << key << "' appears twice in " << srcname << " !";
+            throw std::range_error(message.str());
+          }
           else
           {
             if(overwrite or not pt.hasKey(key))
@@ -197,38 +202,46 @@ public :
    *                  If false, values in the stream will be ignored
    *                  if the key is already present.
    */
-  static void readINITree(std::string file, ParameterTree& pt, bool overwrite = true)
+  static void readINITree(std::string file, ConfigTree& pt, bool overwrite = true)
   {
     std::ifstream in(file.c_str());
 
     if (not in)
-      DUNE_THROW(Dune::IOError, "Could not open configuration file " << file);
+    {
+      std::ostringstream message;
+      message << "Could not open configuration file " << file;
+      throw std::ifstream::failure(message.str());
+    }
 
     readINITree(in, pt, "file '" + file + "'", overwrite);
   }
 
   //@}
 
-  /** \brief parse command line options and build hierarchical ParameterTree structure
+  /** \brief parse command line options and build hierarchical ConfigTree structure
    *
    * The list of command line options is searched for pairs of the type <kbd>-key value</kbd>
    * (note the hyphen in front of the key).
    * For each such pair of options a key-value pair with the corresponding names
-   * is then created in the ParameterTree.
+   * is then created in the ConfigTree.
    *
    * \param argc arg count
    * \param argv arg values
    * \param[out] pt   The parameter tree to store the config structure.
    */
-  static void readOptions(int argc, char* argv [], ParameterTree& pt)
+  static void readOptions(int argc, char* argv [], ConfigTree& pt)
   {
     for(int i=1; i<argc; i++)
     {
       if ((argv[i][0]=='-') and (argv[i][1] not_eq '\000'))
       {
         if(argv[i+1] == nullptr)
-          DUNE_THROW(RangeError, "last option on command line (" << argv[i]
-                     << ") does not have an argument");
+        {
+          std::ostringstream message;
+          message << "last option on command line (" << argv[i]
+                  << ") does not have an argument";
+          throw std::range_error(message.str());
+        }
         pt[argv[i]+1] = argv[i+1];
         ++i; // skip over option argument
       }
@@ -236,7 +249,7 @@ public :
   }
 
   /**
-   * \brief read [named] command line options and build hierarchical ParameterTree structure
+   * \brief read [named] command line options and build hierarchical ConfigTree structure
    *
    * Similar to pythons named options we expect the parameters in the
    * ordering induced by keywords, but allow the user to pass named options
@@ -253,7 +266,7 @@ public :
    * \param help vector containing help strings
   */
   static void readNamedOptions(int argc, char* argv[],
-                               ParameterTree& pt,
+                               ConfigTree& pt,
                                std::vector<std::string> keywords,
                                unsigned int required = std::numeric_limits<unsigned int>::max(),
                                bool allow_more = true,
@@ -269,25 +282,34 @@ public :
       std::string opt = argv[i];
       // check for help
       if (opt == "-h" or opt == "--help")
-        DUNE_THROW(HelpRequest, helpstr);
+        throw std::invalid_argument(helpstr);
       // is this a named parameter?
       if (opt.substr(0,2) == "--")
       {
         size_t pos = opt.find('=',2);
         if (pos == std::string::npos)
-          DUNE_THROW(ParameterTreeParserError,
-                     "value missing for parameter " << opt << "\n" << helpstr);
+        {
+          std::ostringstream message;
+          message << "value missing for parameter " << opt << "\n" << helpstr;
+          throw std::range_error(message.str());
+        }
         std::string key = opt.substr(2,pos-2);
         std::string value = opt.substr(pos+1,opt.size()-pos-1);
         auto it = std::find(keywords.begin(), keywords.end(), key);
         // is this param in the keywords?
         if (not allow_more and it == keywords.end())
-          DUNE_THROW(ParameterTreeParserError,
-                     "unknown parameter " << key << "\n" << helpstr);
+        {
+          std::ostringstream message;
+          message << "unknown parameter " << key << "\n" << helpstr;
+          throw std::range_error(message.str());
+        }
         // do we overwrite an existing entry?
         if (not overwrite and pt[key] not_eq "")
-          DUNE_THROW(ParameterTreeParserError,
-                     "parameter " << key << " already specified" << "\n" << helpstr);
+        {
+          std::ostringstream message;
+          message << "parameter " << key << " already specified" << "\n" << helpstr;
+          throw std::range_error(message.str());
+        }
         pt[key] = value;
         if(it not_eq keywords.end())
           done[std::distance(keywords.begin(),it)] = true; // mark key as stored
@@ -297,12 +319,18 @@ public :
       while(current < done.size() and done[current]) ++current;
       // are there keywords left?
       if (current >= done.size())
-        DUNE_THROW(ParameterTreeParserError,
-                   "superfluous unnamed parameter" << "\n" << helpstr);
+      {
+        std::ostringstream message;
+        message << "superfluous unnamed parameter" << "\n" << helpstr;
+        throw std::range_error(message.str());
+      }
       // do we overwrite an existing entry?
       if (not overwrite and pt[keywords[current]] not_eq "")
-        DUNE_THROW(ParameterTreeParserError,
-                   "parameter " << keywords[current] << " already specified" << "\n" << helpstr);
+      {
+        std::ostringstream message;
+        message << "parameter " << keywords[current] << " already specified" << "\n" << helpstr;
+        throw std::range_error(message.str());
+      }
       pt[keywords[current]] = opt;
       done[current] = true; // mark key as stored
       }
@@ -313,8 +341,11 @@ public :
       if ((i < required) and not done[i]) // is this param required?
         missing += std::string(" ") + keywords[i];
     if (missing.size())
-      DUNE_THROW(ParameterTreeParserError,
-                 "missing parameter(s) ... " << missing << "\n" << helpstr);
+    {
+      std::ostringstream message;
+      message << "missing parameter(s) ... " << missing << "\n" << helpstr;
+      throw std::range_error(message.str());
+    }
   }
 
 private:

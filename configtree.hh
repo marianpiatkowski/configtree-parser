@@ -5,6 +5,11 @@
 
 #include <sstream>
 #include <map>
+#include <fstream>
+#include <algorithm>
+#include <bitset>
+
+#include "classname.hh"
 
 /** \brief Hierarchical structure of string parameters
  * \ingroup Common
@@ -449,9 +454,12 @@ protected:
     s >> dummy;
     // now extraction should have failed, and eof should be set
     if(not s.fail() or not s.eof())
-      DUNE_THROW(RangeError, "as a range of "
-        << n << " items of type "
-        << className<Value>() << " (more items than the range can hold)");
+    {
+      std::ostringstream message;
+      message << "as a range of " << n << " items of type "
+              << className<Value>() << " (more items than the range can hold)";
+      throw std::range_error(message.str());
+    }
   }
 }; // end class ConfigTree
 
@@ -461,7 +469,7 @@ protected:
 //==================================================================
 
 template<typename T>
-struct ParameterTree::Parser
+struct ConfigTree::Parser
 {
   static T parse(const std::string& str)
   {
@@ -471,12 +479,20 @@ struct ParameterTree::Parser
     s.imbue(std::locale::classic());
     s >> val;
     if(not s)
-      DUNE_THROW(RangeError, " as a " << className<T>());
+    {
+      std::ostringstream message;
+      message << " as a " << className<T>();
+      throw std::range_error(message.str());
+    }
     T dummy;
     s >> dummy;
     // now extraction should have failed, and eof should be set
     if ((not s.fail()) or (not s.eof()))
-      DUNE_THROW(RangeError, " as a " << className<T>());
+    {
+      std::ostringstream message;
+      message << " as a " << className<T>();
+      throw std::range_error(message.str());
+    }
     return val;
   }
 };
@@ -485,7 +501,7 @@ struct ParameterTree::Parser
 // son. You just need a these hundred lines of code."
 // Instead im gonna restrict myself to string with charT=char here
 template<typename traits, typename Allocator>
-struct ParameterTree::Parser<std::basic_string<char, traits, Allocator> >
+struct ConfigTree::Parser<std::basic_string<char, traits, Allocator> >
 {
   static std::basic_string<char, traits, Allocator>
   parse(const std::string& str)
@@ -497,7 +513,7 @@ struct ParameterTree::Parser<std::basic_string<char, traits, Allocator> >
 };
 
 template<>
-struct ParameterTree::Parser< bool >
+struct ConfigTree::Parser< bool >
 {
   struct ToLower
   {
@@ -524,20 +540,22 @@ struct ParameterTree::Parser< bool >
   }
 };
 
+#if 0
 template<typename T, int n>
-struct ParameterTree::Parser<FieldVector<T, n> >
+struct ConfigTree::Parser<Dune::FieldVector<T, n> >
 {
-  static FieldVector<T, n>
+  static Dune::FieldVector<T, n>
   parse(const std::string& str)
   {
-    FieldVector<T, n> val;
+    Dune::FieldVector<T, n> val;
     parseRange(str, val.begin(), val.end());
     return val;
   }
 };
+#endif
 
 template<typename T, std::size_t n>
-struct ParameterTree::Parser<std::array<T, n> >
+struct ConfigTree::Parser<std::array<T, n> >
 {
   static std::array<T, n>
   parse(const std::string& str)
@@ -549,7 +567,7 @@ struct ParameterTree::Parser<std::array<T, n> >
 };
 
 template<std::size_t n>
-struct ParameterTree::Parser<std::bitset<n> >
+struct ConfigTree::Parser<std::bitset<n> >
 {
   static std::bitset<n>
   parse(const std::string& str)
@@ -557,18 +575,21 @@ struct ParameterTree::Parser<std::bitset<n> >
     std::bitset<n> val;
     std::vector<std::string> sub = split(str);
     if (sub.size() not_eq n)
-      DUNE_THROW(RangeError, "as a bitset<" << n << "> "
-                 << "because of unmatching size " << sub.size());
+    {
+      std::ostringstream message;
+      message << "as a bitset<" << n << "> " << "because of unmatching size " << sub.size();
+      throw std::range_error(message.str());
+    }
     for (std::size_t i=0; i<n; ++i)
     {
-      val[i] = ParameterTree::Parser<bool>::parse(sub[i]);
+      val[i] = ConfigTree::Parser<bool>::parse(sub[i]);
     }
     return val;
   }
 };
 
 template<typename T, typename A>
-struct ParameterTree::Parser<std::vector<T, A> >
+struct ConfigTree::Parser<std::vector<T, A> >
 {
   static std::vector<T, A>
   parse(const std::string& str)
@@ -577,7 +598,7 @@ struct ParameterTree::Parser<std::vector<T, A> >
     std::vector<T, A> vec;
     for (unsigned int i=0; i<sub.size(); ++i)
     {
-      T val = ParameterTree::Parser<T>::parse(sub[i]);
+      T val = ConfigTree::Parser<T>::parse(sub[i]);
       vec.push_back(val);
     }
     return vec;
