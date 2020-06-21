@@ -267,8 +267,8 @@ public:
           message << "SubTree '" << key << "' not found in ParameterTree (prefix " + prefix_ + ")";
           throw std::range_error(message.str());
         }
-        else
-          return empty_;
+        // else
+        //   return empty_;
       }
       return subs_.find(key)->second;
     }
@@ -387,7 +387,7 @@ public:
 
 protected:
 
-  static const ConfigTree empty_;
+  // static const ConfigTree empty_;
 
   std::string prefix_;
 
