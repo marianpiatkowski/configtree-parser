@@ -9,6 +9,11 @@
 #include <algorithm>
 #include <bitset>
 
+#if HAVE_EIGEN
+#include <Eigen/Core>
+#include <Eigen/Dense>
+#endif // HAVE_EIGEN
+
 #include "classname.hh"
 
 /** \brief Hierarchical structure of string parameters
@@ -540,19 +545,19 @@ struct ConfigTree::Parser< bool >
   }
 };
 
-#if 0
+#if HAVE_EIGEN
 template<typename T, int n>
-struct ConfigTree::Parser<Dune::FieldVector<T, n> >
+struct ConfigTree::Parser<Eigen::Matrix<T,n,1>>
 {
-  static Dune::FieldVector<T, n>
+  static Eigen::Matrix<T,n,1>
   parse(const std::string& str)
   {
-    Dune::FieldVector<T, n> val;
-    parseRange(str, val.begin(), val.end());
+    Eigen::Matrix<T,n,1> val;
+    parseRange(str, &val[0], &val[0]+n);
     return val;
   }
 };
-#endif
+#endif // HAVE_EIGEN
 
 template<typename T, std::size_t n>
 struct ConfigTree::Parser<std::array<T, n> >
