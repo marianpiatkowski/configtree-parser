@@ -7,14 +7,26 @@
 #include <Eigen/Dense>
 #endif // HAVE_EIGEN
 
+// This assert macro does not depend on the value of NDEBUG
+#define check_assert(expr)                                          \
+  do                                                                \
+  {                                                                 \
+    if(!(expr))                                                     \
+    {                                                               \
+      std::cerr << __FILE__ << ":" << __LINE__ << ": check_assert(" \
+                << #expr << ") failed" << std::endl;                \
+      std::abort();                                                 \
+    }                                                               \
+  } while(false)
+
 template<class P>
 void testparam(const P & p)
 {
   // try accessing key
-  assert(p.template get<int>("x1") == 1);
-  assert(p.template get<double>("x1") == 1.0);
-  assert(p.template get<std::string>("x2") == "hallo");
-  assert(p.template get<bool>("x3") == false);
+  check_assert(p.template get<int>("x1") == 1);
+  check_assert(p.template get<double>("x1") == 1.0);
+  check_assert(p.template get<std::string>("x2") == "hallo");
+  check_assert(p.template get<bool>("x3") == false);
   // try reading array like structures
   std::vector<unsigned int>
     array1 = p.template get< std::vector<unsigned int> >("array");
@@ -24,23 +36,23 @@ void testparam(const P & p)
   Eigen::Matrix<unsigned int, 8, 1>
     array3 = p.template get< Eigen::Matrix<unsigned int, 8, 1> >("array");
 #endif // HAVE_EIGEN
-  assert(array1.size() == 8);
+  check_assert(array1.size() == 8);
   for (unsigned int i=0; i<8; i++)
   {
-    assert(array1[i] == i+1);
-    assert(array2[i] == i+1);
+    check_assert(array1[i] == i+1);
+    check_assert(array2[i] == i+1);
 #if HAVE_EIGEN
-    assert(array3[i] == i+1);
+    check_assert(array3[i] == i+1);
 #endif // HAVE_EIGEN
   }
   // try accessing subtree
   p.sub("Foo");
   p.sub("Foo").template get<std::string>("peng");
   // check hasSub and hasKey
-  assert(p.hasSub("Foo"));
-  assert(not p.hasSub("x1"));
-  assert(p.hasKey("x1"));
-  assert(not p.hasKey("Foo"));
+  check_assert(p.hasSub("Foo"));
+  check_assert(not p.hasSub("x1"));
+  check_assert(p.hasKey("x1"));
+  check_assert(not p.hasKey("Foo"));
   // try accessing inexistent key
   try
   {
@@ -146,13 +158,13 @@ void testOptionsParserResults(std::vector<std::string> args,
     for (std::size_t i = 0; i < args.size(); ++i)
       argv[i] = &args[i][0];
     ConfigTreeParser::readNamedOptions(args.size(), argv, pt, keywords, required, allow_more, overwrite);
-    assert(referr == "");
+    check_assert(referr == "");
   }
   catch (const std::range_error & e)
   {
     std::string err = e.what();
     err = err.substr(0, err.find('\n'));
-    assert(referr == err);
+    check_assert(referr == err);
   }
   if (foo not_eq "" and foo not_eq pt.get<std::string>("foo"))
   {
@@ -226,12 +238,12 @@ void testOptionsParser()
 void check_recursiveTreeCompare(const ConfigTree & p1,
                                 const ConfigTree & p2)
 {
-  assert(p1.getValueKeys() == p2.getValueKeys());
-  assert(p1.getSubKeys() == p2.getSubKeys());
+  check_assert(p1.getValueKeys() == p2.getValueKeys());
+  check_assert(p1.getSubKeys() == p2.getSubKeys());
   typedef ConfigTree::KeyVector::const_iterator Iterator;
   for (Iterator it = p1.getValueKeys().begin();
        it not_eq p1.getValueKeys().end(); ++it)
-    assert(p1[*it] == p2[*it]);
+    check_assert(p1[*it] == p2[*it]);
   for (Iterator it = p1.getSubKeys().begin();
        it not_eq p1.getSubKeys().end(); ++it)
     check_recursiveTreeCompare(p1.sub(*it), p2.sub(*it));
