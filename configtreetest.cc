@@ -19,6 +19,23 @@
     }                                                               \
   } while(false)
 
+// Check that the given expression throws the given exception
+#define check_throw(expr, except)                               \
+  do {                                                          \
+    try {                                                       \
+      expr;                                                     \
+      std::cerr << __FILE__ << ":" << __LINE__ << ": " << #expr \
+                << " should throw " << #except << std::endl;    \
+      std::abort();                                             \
+    }                                                           \
+    catch(except) {}                                            \
+    catch(...) {                                                \
+      std::cerr << __FILE__ << ":" << __LINE__ << ": " << #expr \
+                << " should throw " << #except << std::endl;    \
+      std::abort();                                             \
+    }                                                           \
+  } while(false)
+
 template<class P>
 void testparam(const P & p)
 {
@@ -235,6 +252,20 @@ void testOptionsParser()
   }
 }
 
+void testFS1527()
+{
+  { // check that junk (for int) at the end is not accepted
+    ConfigTree ptree;
+    check_throw(ptree["setting"] = "0.5"; ptree.get("setting", 0),
+                std::range_error);
+  }
+  { // check that junk (for double) at the end is not accepted
+    ConfigTree ptree;
+    check_throw(ptree["setting"] = "0.5 junk"; ptree.get("setting", 0.0),
+                std::range_error);
+  }
+}
+
 // check that negative values can be given on the command line
 void testFS1523()
 {
@@ -314,6 +345,7 @@ int main()
   testReport();
 
   // check for specific bugs
+  testFS1527();
   testFS1523();
 
   return 0;
