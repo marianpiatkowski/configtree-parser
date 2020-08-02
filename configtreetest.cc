@@ -235,6 +235,21 @@ void testOptionsParser()
   }
 }
 
+// check that negative values can be given on the command line
+void testFS1523()
+{
+  static char arg0[] = "progname";
+  static char arg1[] = "-setting";
+  static char arg2[] = "-1";
+  static char *argv[] = { arg0, arg1, arg2, NULL };
+  int argc = sizeof argv / sizeof (char *) - 1;
+
+  ConfigTree ptree;
+  ConfigTreeParser::readOptions(argc, argv, ptree);
+
+  check_assert(ptree.get<int>("setting") == -1);
+}
+
 void check_recursiveTreeCompare(const ConfigTree & p1,
                                 const ConfigTree & p2)
 {
@@ -297,6 +312,9 @@ int main()
 
   // check report
   testReport();
+
+  // check for specific bugs
+  testFS1523();
 
   return 0;
 }
